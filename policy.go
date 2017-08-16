@@ -97,6 +97,8 @@ type Policy struct {
 
 	// allowed style property names
 	allowedStyleProperties map[string]struct{}
+	// disallowed style property names
+	disallowedStyleProperties map[string]struct{}
 }
 
 type attrPolicy struct {
@@ -125,6 +127,7 @@ func (p *Policy) init() {
 		p.setOfElementsAllowedWithoutAttrs = make(map[string]struct{})
 		p.setOfElementsToSkipContent = make(map[string]struct{})
 		p.allowedStyleProperties = make(map[string]struct{})
+		p.disallowedStyleProperties = make(map[string]struct{})
 		p.initialized = true
 	}
 }
@@ -444,6 +447,19 @@ func (p *Policy) AllowStyleProperties(properties ...string) *Policy {
 
 	for _, property := range properties {
 		p.allowedStyleProperties[property] = struct{}{}
+	}
+
+	return p
+}
+
+// DisallowStyleProperties is the negative version of AllowStyleProperties and
+// mutual exclusive with it where later has higher precedence.
+// ex. DisallowStyleProperties("position", "right")
+func (p *Policy) DisallowStyleProperties(properties ...string) *Policy {
+	p.init()
+
+	for _, property := range properties {
+		p.disallowedStyleProperties[property] = struct{}{}
 	}
 
 	return p

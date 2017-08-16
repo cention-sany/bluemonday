@@ -555,6 +555,13 @@ func (p *Policy) sanitizeCSSDeclarations(declarations string) string {
 	for _, dec := range decs {
 		if _, allowed := p.allowedStyleProperties[dec.Property]; allowed {
 			strs = append(strs, dec.String())
+		} else if len(p.disallowedStyleProperties) > 0 {
+			if _, no := p.disallowedStyleProperties[dec.Property]; !no {
+				s := dec.String()
+				if !strings.Contains(s, "javascript") {
+					strs = append(strs, s)
+				}
+			}
 		}
 	}
 

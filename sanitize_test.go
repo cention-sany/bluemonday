@@ -1572,3 +1572,73 @@ func TestAllowStyles(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestDisallowStyles(t *testing.T) {
+	p := UGCPolicy()
+	p.DisallowStyleProperties("position", "top", "bottom", "left", "right")
+	p.AllowAttrs("style").OnElements("div")
+
+	tests := []test{
+		{
+			in:       `<div id="_nYb" style="left: 0px; position: fixed; top: 0px;"><a id="tw-max-language-button" style="display: inline-block; padding: 11px 16px; background-color: rgba(255, 255, 255, 0); bottom: 0px;">Cambiara español</a></div>`,
+			expected: `<div id="_nYb" style=""><a id="tw-max-language-button">Cambiara español</a></div>`,
+		},
+		{
+			in:       `<div title="Cerrar pantalla completa" id="tw-max-close" style="display: inline-block; fill: currentColor; height: 24px; line-height: 24px; position: fixed; width: 24px; cursor: pointer; padding: 8px; right: 0px; top: 0px;"><div>`,
+			expected: `<div title="Cerrar pantalla completa" id="tw-max-close" style="display: inline-block;fill: currentColor;height: 24px;line-height: 24px;width: 24px;cursor: pointer;padding: 8px;"><div>`,
+		},
+		{
+			in:       `<div style="text-align: right;background: javascript:alert('xss');font-size: small;">no xss</div>`,
+			expected: `<div style="text-align: right;font-size: small;">no xss</div>`,
+		},
+		{
+			in:       `<div style="text-align: right;font-size: small;background: javascript:alert('xss');">no xss</div>`,
+			expected: `<div style="text-align: right;font-size: small;">no xss</div>`,
+		},
+		{
+			in:       `<div style="text-align: right;font-size: small;background: javascript:alert('xss')">no xss</div>`,
+			expected: `<div style="text-align: right;font-size: small;">no xss</div>`,
+		},
+		{
+			in:       `<div style="background: javascript:alert('xss');">no xss</div>`,
+			expected: `<div style="">no xss</div>`,
+		},
+		{
+			in:       `<div style="background: javascript:alert('xss')">no xss</div>`,
+			expected: `<div style="">no xss</div>`,
+		},
+		{
+			in:       `<div style="text-align;background: javascript:alert('xss')">no xss</div>`,
+			expected: `<div style="">no xss</div>`,
+		},
+		{
+			in:       `<div style="text-align">no xss</div>`,
+			expected: `<div style="">no xss</div>`,
+		},
+		{
+			in:       `<div style="text-align: right !important;">no xss</div>`,
+			expected: `<div style="text-align: right !important;">no xss</div>`,
+		},
+	}
+
+	// These tests are run concurrently to enable the race detector to pick up
+	// potential issues
+	wg := sync.WaitGroup{}
+	wg.Add(len(tests))
+	for ii, tt := range tests {
+		go func(ii int, tt test) {
+			out := p.Sanitize(tt.in)
+			if out != tt.expected {
+				t.Errorf(
+					"test %d failed;\ninput   : %s\noutput  : %s\nexpected: %s",
+					ii,
+					tt.in,
+					out,
+					tt.expected,
+				)
+			}
+			wg.Done()
+		}(ii, tt)
+	}
+	wg.Wait()
+}
